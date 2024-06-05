@@ -14,7 +14,7 @@ def arguments():
     parser.add_argument('-u', '--url', help='list of URL to test')
     parser.add_argument('-c', '--cookies', help='cookies (as dict)')
     parser.add_argument('-p', '--proxy', type=str, help='Give proxy details to route the requests (as dict)')
-    #parser.add_argument('-t', '--threads', type=int, help='number of threads (more threads the faster;  default 1)')
+    parser.add_argument('-t', '--threads', type=int, help='number of threads (more threads the faster;  default 1)')
     parser.add_argument('-d', '--headers', help='add custom headers (as dict)')
 
     args = parser.parse_args()
@@ -36,6 +36,8 @@ def arguments():
     if args.headers:
         args.headers = args.headers.strip()[1:-1].split(',')
         args.headers = dict([aaa.strip().split(':',1) for aaa in args.headers])
+    if not args.threads:
+        args.threads = 5
 
     return args
 
@@ -114,8 +116,7 @@ def printOutput(res):
 
     for aaa in res:
         example = origins_examples[origins.index(aaa)]
-        print(f'{aaa}:')
-        print(f'\t\t\t\t\texample: {example}')
+        print(f'{(aaa+":").ljust(10)}\t\t (example: {example})')
         for bbb in res[aaa]:
             print(f'\t{bbb}:-')
             urls = '\n\t\t'.join(res[aaa][bbb])
@@ -128,11 +129,11 @@ def main():
 
     if args.url:
         r = checkCORS(args, args.url)
-        print(r)
+        printOutput(changeOutputFormat(r))
     else:
         results = dict()
         urls = geturls(args.wordlist)
-        with concurrent.futures.ThreadPoolExecutor() as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max(1,args.threads)) as executor:
             r = [executor.submit(checkCORS, args, url) for url in urls]
             for f in concurrent.futures.as_completed(r):
                 results.update(f.result())
